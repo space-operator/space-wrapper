@@ -1,0 +1,18 @@
+[features]
+seeds = false
+skip-lint = false
+[programs.localnet]
+space_wrapper = "2hg5LFTSjk7jH4zsTgBMmqt4zdp9gS2eEGyASvxf6iVT"
+
+[programs.devnet]
+space_wrapper = "2hg5LFTSjk7jH4zsTgBMmqt4zdp9gS2eEGyASvxf6iVT"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "/home/nilz3ro/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
