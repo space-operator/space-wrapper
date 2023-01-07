@@ -11,7 +11,7 @@ space_wrapper = "2hg5LFTSjk7jH4zsTgBMmqt4zdp9gS2eEGyASvxf6iVT"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/home/nilz3ro/.config/solana/id.json"
 
 [scripts]

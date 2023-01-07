@@ -16,6 +16,10 @@ import { findProxyAuthorityAddress } from "../programs/space-wrapper/utils/pda";
 import { assert } from "chai";
 import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
 
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe("space-wrapper", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -56,7 +60,7 @@ describe("space-wrapper", () => {
     transaction.sign([adminKeypair]);
 
     const createProxyAuthoritySignature = await provider.connection
-      .sendTransaction(transaction);
+      .sendTransaction(transaction, { skipPreflight: true });
 
     let {
       blockhash: blockhashAfterSendingCreateProxyAuthority,
@@ -87,6 +91,7 @@ describe("space-wrapper", () => {
     let adminKeypair = Keypair.generate();
 
     await waitForAirdrop(adminKeypair.publicKey, provider.connection);
+    await sleep(500);
 
     let [proxyAuthorityAddress] = findProxyAuthorityAddress(
       adminKeypair.publicKey,
@@ -117,7 +122,8 @@ describe("space-wrapper", () => {
     transaction.sign([adminKeypair]);
 
     const createProxyAuthoritySignature = await provider.connection
-      .sendTransaction(transaction);
+      .sendTransaction(transaction, { skipPreflight: true });
+    await sleep(500);
 
     let {
       blockhash: blockhashAfterSendingCreateProxyAuthority,
@@ -210,6 +216,8 @@ describe("space-wrapper", () => {
         .sendTransaction(proxyCreateMetadataTransaction, {
           skipPreflight: true,
         });
+      await sleep(500);
+
       let proxyCreateMetadataConfirmation = await provider.connection
         .confirmTransaction({
           signature: proxyCreateMetadataSignature,

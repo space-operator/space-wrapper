@@ -50,7 +50,12 @@ pub mod space_wrapper {
             symbol,
             uri,
             // Some(creators.into_iter().map(|c| c.into()).collect()),
-            None,
+            Some(vec![Creator {
+                key: authority.clone().key(),
+                verified: true,
+                share: 100,
+            }
+            .into()]),
             seller_fee_basis_points,
             true,
             true,
@@ -128,8 +133,10 @@ pub struct ProxyCreateMetadataV3<'info> {
     pub metadata: UncheckedAccount<'info>,
     pub mint: Box<Account<'info, Mint>>,
     /// CHECK: we are passing this along to the metadata program for validation.
+    #[account(mut)]
     pub mint_authority: Signer<'info>,
     /// CHECK: bullshit
+    #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
