@@ -14,7 +14,11 @@ import { createMint } from "@solana/spl-token";
 import { SpaceWrapper } from "../target/types/space_wrapper";
 import { findProxyAuthorityAddress } from "../programs/space-wrapper/utils/pda";
 import { assert } from "chai";
-import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
+import {
+  createCreateMetadataAccountV3Instruction,
+  PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
+  UseMethod,
+} from "@metaplex-foundation/mpl-token-metadata";
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,6 +29,92 @@ describe("space-wrapper", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace.SpaceWrapper as Program<SpaceWrapper>;
   const provider = anchor.getProvider();
+
+  xit("call token metadata directly", async () => {
+    // Note: this test exists so that we can send a valid instruction
+    // to the token metadata program, to inspect instruction data and
+    // accounts.
+    let mintAuthority = Keypair.generate();
+    await waitForAirdrop(mintAuthority.publicKey, provider.connection);
+
+    let mintAddress = await createMint(
+      provider.connection,
+      mintAuthority,
+      mintAuthority.publicKey,
+      mintAuthority.publicKey,
+      0,
+    );
+
+    let [metadataAddress] = await findMetadataAddress(
+      mintAddress,
+      TOKEN_METADATA_PROGRAM_ID,
+    );
+
+    // console.log({
+    //   mint: mintAddress.toString(),
+    //   metadata: metadataAddress.toString(),
+    //   authority: mintAuthority.publicKey.toString(),
+    // });
+
+    let createMetadataInstruction = createCreateMetadataAccountV3Instruction({
+      metadata: metadataAddress,
+      mint: mintAddress,
+      mintAuthority: mintAuthority.publicKey,
+      payer: mintAuthority.publicKey,
+      updateAuthority: mintAuthority.publicKey,
+    }, {
+      createMetadataAccountArgsV3: {
+        data: {
+          name: "TEST",
+          symbol: "TEST",
+          uri: "http://test.com",
+          sellerFeeBasisPoints: 0,
+          creators: [{
+            address: mintAuthority.publicKey,
+            verified: false,
+            share: 100,
+          }],
+          collection: null,
+          uses: {
+            useMethod: UseMethod.Burn,
+            remaining: 0,
+            total: 0,
+          },
+        },
+        isMutable: false,
+        collectionDetails: undefined,
+      },
+    });
+
+    let {
+      blockhash: blockHashBefore,
+    } = await provider.connection.getLatestBlockhash();
+
+    let createMetadataMessage = new TransactionMessage({
+      recentBlockhash: blockHashBefore,
+      payerKey: mintAuthority.publicKey,
+      instructions: [createMetadataInstruction],
+    }).compileToLegacyMessage();
+
+    let transaction = new VersionedTransaction(createMetadataMessage);
+    transaction.sign([mintAuthority]);
+
+    const signature = await provider.connection.sendTransaction(transaction, {
+      skipPreflight: true,
+    });
+
+    let { blockhash: blockHashAfter, lastValidBlockHeight: blockHeightAfter } =
+      await provider.connection.getLatestBlockhash();
+
+    let confirmation = await provider.connection.confirmTransaction({
+      signature,
+      blockhash: blockHashAfter,
+      lastValidBlockHeight: blockHeightAfter,
+    });
+
+    // console.log("confirmation");
+    // console.log(confirmation);
+  });
 
   it("create proxy authority", async () => {
     let adminKeypair = Keypair.generate();
@@ -162,23 +252,27 @@ describe("space-wrapper", () => {
       TOKEN_METADATA_PROGRAM_ID,
     );
 
-    let ixAccounts = {
-      proxyAuthority: proxyAuthorityAddress,
-      mint: mintAddress,
-      metadata: metadataAddress,
-      mintAuthority: adminKeypair.publicKey,
-      systemProgram: SystemProgram.programId,
-    };
+    // let ixAccounts = {
+    //   proxyAuthority: proxyAuthorityAddress,
+    //   mint: mintAddress,
+    //   metadata: metadataAddress,
+    //   mintAuthority: adminKeypair.publicKey,
+    //   systemProgram: SystemProgram.programId,
+    // };
 
-    for (let k in ixAccounts) {
-      console.log(k, ixAccounts[k].toBase58());
-    }
+    // for (let k in ixAccounts) {
+    //   console.log(k, ixAccounts[k].toBase58());
+    // }
 
     let createMetadataAccountsIx = await program.methods.proxyCreateMetadataV3(
       "asdf",
       "ASD",
       "http://placekitten.io/500/500",
-      [],
+      [{ key: proxyAuthorityAddress, share: 50, verified: true }, {
+        key: adminKeypair.publicKey,
+        share: 50,
+        verified: false,
+      }],
       100,
       null,
     )
@@ -189,7 +283,7 @@ describe("space-wrapper", () => {
         mintAuthority: adminKeypair.publicKey,
         authority: adminKeypair.publicKey,
         systemProgram: SystemProgram.programId,
-        rent: SYSVAR_RENT_PUBKEY,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       }).instruction();
 
     try {
@@ -231,7 +325,7 @@ describe("space-wrapper", () => {
         );
       }
     } catch (e) {
-      console.log(e);
+      console.error(e);
     }
   });
 });
