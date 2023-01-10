@@ -183,6 +183,7 @@ describe("space-wrapper", () => {
         authority: authorityKeypair.publicKey,
         proxyAuthority: proxyAuthorityAddress,
         delegate: delegateKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
       }).instruction();
 
     let { blockhash: blockhashBeforeDelegation } = await provider.connection
@@ -244,9 +245,68 @@ describe("space-wrapper", () => {
         delegateKeypair.publicKey.toBase58(),
       "Invalid proxyAuthority delegate",
     );
+
+    let undelegateProxyAuthorityIx = await program.methods
+      .undelegateProxyAuthority().accounts({
+        authority: authorityKeypair.publicKey,
+        proxyAuthority: proxyAuthorityAddress,
+        delegate: delegateKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+      }).instruction();
+
+    let { blockhash: blockhashBeforeUndelegation } = await provider.connection
+      .getLatestBlockhash();
+
+    // let undelegateProxyAuthorityTx = new Transaction().add(
+    //   undelegateProxyAuthorityIx,
+    // );
+
+    let undelegateProxyAuthorityMessage = new TransactionMessage({
+      recentBlockhash: blockhashBeforeUndelegation,
+      payerKey: authorityKeypair.publicKey,
+      instructions: [undelegateProxyAuthorityIx],
+    }).compileToLegacyMessage();
+
+    let undelegateProxyAuthorityTx = new VersionedTransaction(
+      undelegateProxyAuthorityMessage,
+    );
+    undelegateProxyAuthorityTx.sign([authorityKeypair]);
+
+    let undelegateProxyAuthoritySignature = await provider.connection
+      .sendTransaction(undelegateProxyAuthorityTx, {
+        skipPreflight: true,
+      });
+
+    let {
+      blockhash: blockhashAfterUndelegation,
+      lastValidBlockHeight: blockHeightAfterUndelegation,
+    } = await provider.connection.getLatestBlockhash();
+
+    let undelegateProxyAuthorityConfirmation = await provider.connection
+      .confirmTransaction({
+        signature: undelegateProxyAuthoritySignature,
+        blockhash: blockhashAfterUndelegation,
+        lastValidBlockHeight: blockHeightAfterUndelegation,
+      });
+
+    if (undelegateProxyAuthorityConfirmation.value.err) {
+      console.error("undelegate proxy authority confirmation contains err.");
+      throw new Error(
+        undelegateProxyAuthorityConfirmation.value.err.toString(),
+      );
+    }
+
+    proxyAuthority = await program.account.proxyAuthority.fetch(
+      proxyAuthorityAddress,
+    );
+
+    assert(
+      proxyAuthority.delegates.length === 0,
+      "proxyAuthority delegates length should be 0",
+    );
   });
 
-  xit("proxy create metadata accounts v3", async () => {
+  it("proxy create metadata accounts v3", async () => {
     let authorityKeypair = Keypair.generate();
 
     await airdrop(authorityKeypair.publicKey, provider.connection);
