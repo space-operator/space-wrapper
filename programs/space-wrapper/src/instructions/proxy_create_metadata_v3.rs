@@ -5,12 +5,13 @@ use mpl_token_metadata::{instruction::create_metadata_accounts_v3, state::Collec
 use crate::{
     error::SpaceWrapperError,
     state::{creator::Creator, proxy_authority::ProxyAuthority},
+    utils::is_authorized,
 };
 
 #[derive(Accounts)]
 pub struct ProxyCreateMetadataV3<'info> {
     #[account(
-        seeds = [b"proxy".as_ref(), authority.key().as_ref()],
+        seeds = [b"proxy".as_ref(), proxy_authority.authority.key().as_ref()],
         bump,
     )]
     pub proxy_authority: Box<Account<'info, ProxyAuthority>>,
@@ -21,6 +22,7 @@ pub struct ProxyCreateMetadataV3<'info> {
     /// CHECK: we are passing this along to the metadata program for validation.
     #[account(mut)]
     pub mint_authority: Signer<'info>,
+    /// The authority or delegate.
     #[account(mut)]
     pub authority: Signer<'info>,
     /// CHECK: we manually check the address of this account against the token-metadata program.
@@ -47,9 +49,13 @@ pub fn process_proxy_create_metadata_v3(
     let system_program = &ctx.accounts.system_program;
     let token_metadata_program = &ctx.accounts.token_metadata_program;
 
-    assert!(
+    require!(
+        is_authorized(proxy_authority, authority.key()),
+        SpaceWrapperError::Unauthorized
+    );
+    require!(
         token_metadata_program.key() == metadata_program_id,
-        "Invalid token metadata program id"
+        SpaceWrapperError::InvalidTokenMetadataProgram
     );
 
     let create_metadata_accounts_v3_instruction = create_metadata_accounts_v3(

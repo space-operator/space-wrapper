@@ -1,6 +1,7 @@
 mod error;
 mod instructions;
 mod state;
+mod utils;
 
 use anchor_lang::prelude::*;
 use instructions::*;
@@ -10,11 +11,18 @@ declare_id!("2hg5LFTSjk7jH4zsTgBMmqt4zdp9gS2eEGyASvxf6iVT");
 
 #[program]
 pub mod space_wrapper {
-
     use super::*;
 
     pub fn create_proxy_authority(ctx: Context<CreateProxyAuthority>) -> Result<()> {
         process_create_proxy_authority(ctx)
+    }
+
+    pub fn delegate_proxy_authority(ctx: Context<DelegateProxyAuthority>) -> Result<()> {
+        process_delegate_proxy_authority(ctx)
+    }
+
+    pub fn undelegate_proxy_authority(ctx: Context<UndelegateProxyAuthority>) -> Result<()> {
+        process_undelegate_proxy_authority(ctx)
     }
 
     pub fn proxy_create_metadata_v3(
@@ -36,4 +44,8 @@ pub mod space_wrapper {
             collection,
         )
     }
+
+    // proxy_create_master_edition
+    // proxy_verify_collection
+    // proxy_update_metadata
 }

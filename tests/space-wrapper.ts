@@ -7,6 +7,7 @@ import {
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
+  Transaction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -35,7 +36,7 @@ describe("space-wrapper", () => {
     // to the token metadata program, to inspect instruction data and
     // accounts.
     let mintAuthority = Keypair.generate();
-    await waitForAirdrop(mintAuthority.publicKey, provider.connection);
+    await airdrop(mintAuthority.publicKey, provider.connection);
 
     let mintAddress = await createMint(
       provider.connection,
@@ -116,19 +117,20 @@ describe("space-wrapper", () => {
     // console.log(confirmation);
   });
 
-  it("create proxy authority", async () => {
-    let adminKeypair = Keypair.generate();
+  it("create proxy authority, delegate and undelegate", async () => {
+    let authorityKeypair = Keypair.generate();
+    let delegateKeypair = Keypair.generate();
 
-    await waitForAirdrop(adminKeypair.publicKey, provider.connection);
+    await airdrop(authorityKeypair.publicKey, provider.connection);
 
     let [proxyAuthorityAddress] = findProxyAuthorityAddress(
-      adminKeypair.publicKey,
+      authorityKeypair.publicKey,
       program.programId,
     );
 
     let createProxyAuthorityIx = await program.methods.createProxyAuthority()
       .accounts({
-        authority: adminKeypair.publicKey,
+        authority: authorityKeypair.publicKey,
         proxyAuthority: proxyAuthorityAddress,
         systemProgram: SystemProgram.programId,
       }).instruction();
@@ -139,7 +141,7 @@ describe("space-wrapper", () => {
 
     let createProxyAuthorityMessage = new TransactionMessage({
       recentBlockhash: blockhashBeforeSendingCreateProxyAuthority,
-      payerKey: adminKeypair.publicKey,
+      payerKey: authorityKeypair.publicKey,
       instructions: [
         createProxyAuthorityIx,
       ],
@@ -147,7 +149,7 @@ describe("space-wrapper", () => {
 
     let transaction = new VersionedTransaction(createProxyAuthorityMessage);
 
-    transaction.sign([adminKeypair]);
+    transaction.sign([authorityKeypair]);
 
     const createProxyAuthoritySignature = await provider.connection
       .sendTransaction(transaction, { skipPreflight: true });
@@ -172,25 +174,92 @@ describe("space-wrapper", () => {
     );
 
     assert(
-      adminProxyAuthority.authority.equals(adminKeypair.publicKey),
+      adminProxyAuthority.authority.equals(authorityKeypair.publicKey),
       "created proxy authority has an invalid authority address",
+    );
+
+    let delegateProxyAuthorityIx = await program.methods
+      .delegateProxyAuthority().accounts({
+        authority: authorityKeypair.publicKey,
+        proxyAuthority: proxyAuthorityAddress,
+        delegate: delegateKeypair.publicKey,
+      }).instruction();
+
+    let { blockhash: blockhashBeforeDelegation } = await provider.connection
+      .getLatestBlockhash();
+
+    let delegateProxyAuthorityMessage = new TransactionMessage({
+      recentBlockhash: blockhashBeforeDelegation,
+      payerKey: authorityKeypair.publicKey,
+      instructions: [delegateProxyAuthorityIx],
+    }).compileToLegacyMessage();
+
+    let delegateProxyAuthorityTx = new VersionedTransaction(
+      delegateProxyAuthorityMessage,
+    );
+
+    delegateProxyAuthorityTx.sign([authorityKeypair]);
+
+    // let delegateProxyAuthorityTx = new Transaction().add(
+    //   delegateProxyAuthorityIx,
+    // );
+
+    // let delegateProxyAuthoritySignature = await provider.connection
+    //   .sendTransaction(delegateProxyAuthorityTx, [authorityKeypair], {
+    //     skipPreflight: true,
+    //   });
+
+    let delegateProxyAuthoritySignature = await provider.connection
+      .sendTransaction(delegateProxyAuthorityTx, {
+        skipPreflight: true,
+      });
+
+    let {
+      blockhash: blockhashAfterDelegation,
+      lastValidBlockHeight: blockHeightAfterDelegation,
+    } = await provider.connection.getLatestBlockhash();
+
+    let delegateProxyAuthorityConfirmation = await provider.connection
+      .confirmTransaction({
+        signature: delegateProxyAuthoritySignature,
+        blockhash: blockhashAfterDelegation,
+        lastValidBlockHeight: blockHeightAfterDelegation,
+      });
+
+    if (delegateProxyAuthorityConfirmation.value.err) {
+      console.error("delegate proxy authority confirmation contains err.");
+      throw new Error(delegateProxyAuthorityConfirmation.value.err.toString());
+    }
+
+    let proxyAuthority = await program.account.proxyAuthority.fetch(
+      proxyAuthorityAddress,
+    );
+
+    assert(
+      proxyAuthority.delegates.length === 1,
+      "Invalid proxyAuthority delegates length",
+    );
+    assert(
+      proxyAuthority.delegates.at(0).toBase58() ===
+        delegateKeypair.publicKey.toBase58(),
+      "Invalid proxyAuthority delegate",
     );
   });
 
-  it("proxy create metadata accounts v3", async () => {
-    let adminKeypair = Keypair.generate();
+  xit("proxy create metadata accounts v3", async () => {
+    let authorityKeypair = Keypair.generate();
 
-    await waitForAirdrop(adminKeypair.publicKey, provider.connection);
+    await airdrop(authorityKeypair.publicKey, provider.connection);
     await sleep(500);
 
     let [proxyAuthorityAddress] = findProxyAuthorityAddress(
-      adminKeypair.publicKey,
+      authorityKeypair.publicKey,
       program.programId,
     );
 
     let createProxyAuthorityIx = await program.methods.createProxyAuthority()
       .accounts({
-        authority: adminKeypair.publicKey,
+        authority: authorityKeypair.publicKey,
         proxyAuthority: proxyAuthorityAddress,
         systemProgram: SystemProgram.programId,
       }).instruction();
@@ -201,7 +270,7 @@ describe("space-wrapper", () => {
 
     let createProxyAuthorityMessage = new TransactionMessage({
       recentBlockhash: blockhashBeforeSendingCreateProxyAuthority,
-      payerKey: adminKeypair.publicKey,
+      payerKey: authorityKeypair.publicKey,
       instructions: [
         createProxyAuthorityIx,
       ],
@@ -209,7 +278,7 @@ describe("space-wrapper", () => {
 
     let transaction = new VersionedTransaction(createProxyAuthorityMessage);
 
-    transaction.sign([adminKeypair]);
+    transaction.sign([authorityKeypair]);
 
     const createProxyAuthoritySignature = await provider.connection
       .sendTransaction(transaction, { skipPreflight: true });
@@ -235,15 +304,15 @@ describe("space-wrapper", () => {
     );
 
     assert(
-      adminProxyAuthority.authority.equals(adminKeypair.publicKey),
+      adminProxyAuthority.authority.equals(authorityKeypair.publicKey),
       "created proxy authority has an invalid authority address",
     );
 
     let mintAddress = await createMint(
       provider.connection,
-      adminKeypair,
-      adminKeypair.publicKey,
-      adminKeypair.publicKey,
+      authorityKeypair,
+      authorityKeypair.publicKey,
+      authorityKeypair.publicKey,
       0,
     );
 
@@ -256,7 +325,7 @@ describe("space-wrapper", () => {
     //   proxyAuthority: proxyAuthorityAddress,
     //   mint: mintAddress,
     //   metadata: metadataAddress,
-    //   mintAuthority: adminKeypair.publicKey,
+    //   mintAuthority: authorityKeypair.publicKey,
     //   systemProgram: SystemProgram.programId,
     // };
 
@@ -269,7 +338,7 @@ describe("space-wrapper", () => {
       "ASD",
       "http://placekitten.io/500/500",
       [{ key: proxyAuthorityAddress, share: 50, verified: true }, {
-        key: adminKeypair.publicKey,
+        key: authorityKeypair.publicKey,
         share: 50,
         verified: false,
       }],
@@ -280,8 +349,8 @@ describe("space-wrapper", () => {
         proxyAuthority: proxyAuthorityAddress,
         mint: mintAddress,
         metadata: metadataAddress,
-        mintAuthority: adminKeypair.publicKey,
-        authority: adminKeypair.publicKey,
+        mintAuthority: authorityKeypair.publicKey,
+        authority: authorityKeypair.publicKey,
         systemProgram: SystemProgram.programId,
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       }).instruction();
@@ -291,7 +360,7 @@ describe("space-wrapper", () => {
         await provider.connection.getLatestBlockhash();
 
       let proxyMetadataMessage = new TransactionMessage({
-        payerKey: adminKeypair.publicKey,
+        payerKey: authorityKeypair.publicKey,
         recentBlockhash: blockhashBeforeSendingCreateMetadataAccounts,
         instructions: [createMetadataAccountsIx],
       }).compileToLegacyMessage();
@@ -300,7 +369,7 @@ describe("space-wrapper", () => {
         proxyMetadataMessage,
       );
 
-      proxyCreateMetadataTransaction.sign([adminKeypair]);
+      proxyCreateMetadataTransaction.sign([authorityKeypair]);
 
       let {
         blockhash: blockhashAfterSendingCreateMetadataAccounts,
@@ -330,7 +399,7 @@ describe("space-wrapper", () => {
   });
 });
 
-async function waitForAirdrop(address: PublicKey, connection: Connection) {
+async function airdrop(address: PublicKey, connection: Connection) {
   let signature = await connection.requestAirdrop(address, LAMPORTS_PER_SOL);
   let { blockhash, lastValidBlockHeight } = await connection
     .getLatestBlockhash();

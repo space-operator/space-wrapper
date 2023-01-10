@@ -7,7 +7,7 @@ pub struct CreateProxyAuthority<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32,
+        space = ProxyAuthority::LEN,
         seeds = [b"proxy".as_ref(), authority.key().as_ref()],
         bump
     )]
@@ -21,6 +21,7 @@ pub fn process_create_proxy_authority(ctx: Context<CreateProxyAuthority>) -> Res
     let proxy_authority = &mut ctx.accounts.proxy_authority;
 
     proxy_authority.authority = *ctx.accounts.authority.key;
+    proxy_authority.delegates = Vec::new();
 
     Ok(())
 }
