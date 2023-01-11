@@ -2,14 +2,17 @@ use anchor_lang::prelude::*;
 
 use mpl_token_metadata::utils::resize_or_reallocate_account_raw;
 
-use crate::{error::SpaceWrapperError, state::proxy_authority::ProxyAuthority};
+use crate::{
+    error::SpaceWrapperError,
+    state::proxy_authority::{ProxyAuthority, PROXY},
+};
 
 #[derive(Accounts)]
 pub struct UndelegateProxyAuthority<'info> {
     pub authority: Signer<'info>,
     #[account(
         mut,
-        seeds = [b"proxy".as_ref(), proxy_authority.authority.key().as_ref()],
+        seeds = [PROXY.as_ref(), proxy_authority.authority.key().as_ref()],
         bump,
     )]
     pub proxy_authority: Box<Account<'info, ProxyAuthority>>,

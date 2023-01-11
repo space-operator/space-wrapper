@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+pub const PROXY: &str = "proxy";
+
 #[account]
 pub struct ProxyAuthority {
     pub authority: Pubkey,

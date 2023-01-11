@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use state::creator::Creator;
 
-declare_id!("2hg5LFTSjk7jH4zsTgBMmqt4zdp9gS2eEGyASvxf6iVT");
+declare_id!("F67MeXhizyw49YoN3XNMTXzjpRoRSh7Q98NYqyBXzA3r");
 
 #[program]
 pub mod space_wrapper {
@@ -45,7 +45,13 @@ pub mod space_wrapper {
         )
     }
 
-    // proxy_create_master_edition
+    pub fn proxy_create_master_edition_v3(
+        ctx: Context<ProxyCreateMasterEditionV3>,
+        max_supply: Option<u64>,
+    ) -> Result<()> {
+        process_proxy_create_master_edition_v3(ctx, max_supply)
+    }
+
     // proxy_verify_collection
     // proxy_update_metadata
 }

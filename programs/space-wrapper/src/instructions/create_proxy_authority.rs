@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::proxy_authority::ProxyAuthority;
+use crate::state::proxy_authority::{ProxyAuthority, PROXY};
 
 #[derive(Accounts)]
 pub struct CreateProxyAuthority<'info> {
@@ -8,7 +8,7 @@ pub struct CreateProxyAuthority<'info> {
         init,
         payer = authority,
         space = ProxyAuthority::LEN,
-        seeds = [b"proxy".as_ref(), authority.key().as_ref()],
+        seeds = [PROXY.as_ref(), authority.key().as_ref()],
         bump
     )]
     pub proxy_authority: Account<'info, ProxyAuthority>,

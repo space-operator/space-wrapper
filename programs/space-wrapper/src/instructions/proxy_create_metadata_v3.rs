@@ -4,14 +4,17 @@ use mpl_token_metadata::{instruction::create_metadata_accounts_v3, state::Collec
 
 use crate::{
     error::SpaceWrapperError,
-    state::{creator::Creator, proxy_authority::ProxyAuthority},
+    state::{
+        creator::Creator,
+        proxy_authority::{ProxyAuthority, PROXY},
+    },
     utils::is_authorized,
 };
 
 #[derive(Accounts)]
 pub struct ProxyCreateMetadataV3<'info> {
     #[account(
-        seeds = [b"proxy".as_ref(), proxy_authority.authority.key().as_ref()],
+        seeds = [PROXY.as_ref(), proxy_authority.authority.key().as_ref()],
         bump,
     )]
     pub proxy_authority: Box<Account<'info, ProxyAuthority>>,
@@ -104,8 +107,8 @@ pub fn process_proxy_create_metadata_v3(
         &create_metadata_accounts_v3_instruction,
         &account_infos,
         &[&[
-            b"proxy".as_ref(),
-            authority.key().as_ref(),
+            PROXY.as_ref(),
+            proxy_authority.authority.key().as_ref(),
             &[proxy_authority_bump],
         ]],
     )?;
