@@ -2,17 +2,17 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-space_wrapper = "F67MeXhizyw49YoN3XNMTXzjpRoRSh7Q98NYqyBXzA3r"
+space_wrapper = "295QjveZJsZ198fYk9FTKaJLsgAWNdXKHsM6Qkb3dsVn"
 
 [programs.devnet]
-space_wrapper = "F67MeXhizyw49YoN3XNMTXzjpRoRSh7Q98NYqyBXzA3r"
+space_wrapper = "295QjveZJsZ198fYk9FTKaJLsgAWNdXKHsM6Qkb3dsVn"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "devnet"
-wallet = "/home/nilz3ro/.config/solana/id.json"
+wallet = "/home/amir/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
