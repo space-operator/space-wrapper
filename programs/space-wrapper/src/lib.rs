@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use state::creator::Creator;
 
-declare_id!("F67MeXhizyw49YoN3XNMTXzjpRoRSh7Q98NYqyBXzA3r");
+declare_id!("295QjveZJsZ198fYk9FTKaJLsgAWNdXKHsM6Qkb3dsVn");
 
 #[program]
 pub mod space_wrapper {
